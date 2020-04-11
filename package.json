@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "electron": "^8.0.0"
+    "@types/uuid": "^7.0.2",
+    "electron": "^8.0.0",
+    "uuid": "^7.0.3"
   },
   "devDependencies": {},
   "scripts": {
