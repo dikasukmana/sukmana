@@ -72,25 +72,16 @@ ipcMain.on("appointment:create", (event, appointment) => {
     createWindow.close();
 
     console.log(allAppointment);
-    
 });
-
 ipcMain.on("appointment:request:list", event => {
-    console.log("here");
-
+    listWindow.webContents.send('appointment:response:list', allAppointment);
 });
-
 ipcMain.on("appointment:request:today", event => {
     console.log("here2");
-
 });
-
 ipcMain.on("appointment:done", (event, id) => {
     console.log("here3");
-
 });
-
-
 
 const menuTemplate = [{
         label: "file",
