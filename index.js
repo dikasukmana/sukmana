@@ -1,142 +1,82 @@
-const electron = require("electron");
-const uuid = require("uuid").v4;
-const fs = require("fs");
+const electron = require("electron")
+const fs = require("fs")
+const uuid = require("uuid")
 
-const {
-    app,
-    BrowserWindow,
-    Menu,
-    ipcMain
-} = electron;
+const { app, BrowserWindow, ipcMain, Menu} = electron
 
-let todayWindow;
-let createWindow;
-let listWindow;
+let mainWindow
 
-let allAppointment = [];
+let allAppointments = []
 
 fs.readFile("db.json", (err, jsonAppointments) => {
     if (!err) {
-        const oldAppointment = JSON.parse(jsonAppointments);
-        allAppointment = oldAppointment;
+        const oldAppointments = JSON.parse(jsonAppointments)
+        allAppointments = oldAppointments
     }
 })
 
-app.on("ready", () => {
-    todayWindow = new BrowserWindow({
+const createWindow = () => {
+    mainWindow = new BrowserWindow({
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: true,
         },
-        title: "Tutorial Electron"
-    });
+        title: "Doctor Appoiments"
+    })
 
-    todayWindow.loadURL(`file://${__dirname}/today.html`);
-    todayWindow.on("closed", () => {
+    const startUrl =
+        process.env.ELECTRON_START_URL || `file://${__dirname}/build/index.html`
 
-        const jsonAppointment = JSON.stringify(allAppointment);
-        fs.writeFileSync("db.json", jsonAppointment);
+    mainWindow.loadURL(startUrl)
 
-        app.quit();
-        todayWindow = null;
-    });
+    mainWindow.on("closed", () => {
+        const jsonAppointments  = JSON.stringify(allAppointments)
+        fs.writeFileSync("db.json", jsonAppointments)
 
-    const mainMenu = Menu.buildFromTemplate(menuTemplate);
-    Menu.setApplicationMenu(mainMenu);
+        app.quit()
+        mainWindow = null
+    })
 
-});
+    if(process.env.ELECTRON_START_URL){
+        const mainMenu = Menu.buildFromTemplate(menuTemplate)
+        Menu.setApplicationMenu(mainMenu)
+    }else{
+        Menu.setApplicationMenu(null)
+    }
+}
 
-const listWindowCreator = () => {
-    listWindow = new BrowserWindow({
-        webPreferences: {
-            nodeIntegration: true
-        },
-        width: 600,
-        height: 400,
-        title: "All Appointments"
-    });
-
-    listWindow.setMenu(null);
-    listWindow.loadURL(`file://${__dirname}/list.html`);
-    listWindow.on("closed", () => (listWindow = null));
-};
-
-const createWindowCreator = () => {
-    createWindow = new BrowserWindow({
-        webPreferences: {
-            nodeIntegration: true
-        },
-        width: 600,
-        height: 400,
-        title: "Create Appointments"
-    });
-
-    createWindow.setMenu(null);
-    createWindow.loadURL(`file://${__dirname}/create.html`);
-    createWindow.on("closed", () => (createWindow = null));
-};
+app.on("ready", createWindow)
 
 ipcMain.on("appointment:create", (event, appointment) => {
-    appointment["id"] = uuid();
-    appointment["done"] = 0;
-    allAppointment.push(appointment);
-    sendTodayAppointments();
-    createWindow.close();
+    appointment["id"] = uuid()
+    appointment["done"] = 0
 
-    console.log(allAppointment);
-});
-ipcMain.on("appointment:request:list", event => {
-    listWindow.webContents.send("appointment:response:list", allAppointment);
-});
-ipcMain.on("appointment:request:today", event => {
-    sendTodayAppointments();
-});
-ipcMain.on("appointment:done", (event, id) => {
-    allAppointment.forEach((appointment) => {
-        appointment.done = 1;
-    });
+    allAppointments.push(appointment)
+})
 
-    sendTodayAppointments();
+ipcMain.on("appointment:request:list", (event, appointment) => {
+    mainWindow.webContents.send("appointment:response:list", allAppointments)
+})
 
-});
+ipcMain.on("appointment:done", (event, appointment) => {
+    allAppointments.forEach((appointment) => {
+        if (appointment.id === id) appointment.done = 1
+    })
+
+    sendTodayAppointments()
+})
 
 const sendTodayAppointments = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const filtered = allAppointment.filter((appointment) => appointment.date === today);
+    const today = new Date().toISOString().slice(0, 10)
+    const filtered = allAppointments.filter(
+        (appointment) = appointment.date === today
+    )
 
-    todayWindow.webContents.send("appointment:response:today", filtered);
-};
+    mainWindow.webContents.send("appointment:response:today", filtered)
+}
 
-const menuTemplate = [{
-        label: "file",
-        submenu: [{
-                label: "New Appointments",
-
-                click() {
-                    createWindowCreator();
-                }
-            },
-            {
-                label: "All Appointments",
-                click() {
-                    listWindowCreator();
-                }
-            },
-            {
-                label: "Quit",
-                accelerator: process.platform === "darwin" ? "Command+Q" : "CTRL + Q",
-                click() {
-                    app.quit();
-                }
-            }
-        ]
-    },
-
+const menuTemplate = [
     {
         label: "View",
-        submenu: [{
-            role: "reload"
-        }, {
-            role: "toggledevtools"
-        }]
-    }
+        submenu: [{ role: "reload" }, { role: "toggledevtools" }],
+    },
 ]
